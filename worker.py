@@ -7,9 +7,9 @@ from celery.schedules import crontab
 celery_app = Celery('tasks', broker=os.getenv('CLOUDAMQP_URL'))
 
 celery_app.conf.beat_schedule = {
-    'run-every-midnight': {
+    'run-every-5-minutes': {
         'task': 'worker.backup_task',
-        'schedule': crontab(hour=14, minute=59),
+        'schedule': crontab(minute='*/5'),
     },
 }
 
