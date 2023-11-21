@@ -30,6 +30,7 @@ repo = g.get_user().get_repo(github_repo)
 celery_app = Celery('tasks', broker=os.getenv('CLOUDAMQP_URL'))
 
 def perform_backup():
+    print("Backup Now Started")
     # Your existing backup logic goes here
     # Get the current timestamp
     timestamp = datetime.now().strftime("%Y-%b-%d_%H-%M-%S")
@@ -86,7 +87,7 @@ def perform_backup():
             parent = repo.get_git_commit(master_sha)
             commit = repo.create_git_commit(f"Update {table}.csv", tree, [parent])
             master_ref.edit(commit.sha)
-
+            print("Backup Now Finished")
         except Exception as e:
             print(f"Error processing table {table}: {str(e)}")
 
