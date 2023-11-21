@@ -5,7 +5,7 @@ celery==5.1.2
 certifi==2023.11.17
 cffi==1.15.1
 chardet==4.0.0
-click==8.1.7
+click==7.1.2
 cryptography==41.0.5
 dataclasses==0.6
 Deprecated==1.2.14
