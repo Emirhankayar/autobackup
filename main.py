@@ -1,4 +1,3 @@
-from flask import Flask, jsonify
 from supabase_py import create_client, Client
 from github import Github, InputGitTreeElement
 import csv
@@ -7,17 +6,13 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 import io
-from celery import Celery
 
 load_dotenv()
-
-app = Flask(__name__)
 
 url = os.getenv("SUPABASE_URL")
 key = os.getenv("SUPABASE_KEY")
 github_token = os.getenv("GITHUB_TOKEN")
 github_repo = os.getenv("GITHUB_REPO")
-flask_app_port = int(os.getenv("FLASK_APP_PORT", 10000))
 
 # Create a client
 supabase: Client = create_client(url, key)
@@ -26,12 +21,8 @@ supabase: Client = create_client(url, key)
 g = Github(github_token)
 repo = g.get_user().get_repo(github_repo)
 
-# Create a Celery instance
-celery_app = Celery('tasks', broker=os.getenv('CLOUDAMQP_URL'))
-
 def perform_backup():
     print("Backup Now Started")
-    # Your existing backup logic goes here
     # Get the current timestamp
     timestamp = datetime.now().strftime("%Y-%b-%d_%H-%M-%S")
 
@@ -52,7 +43,8 @@ def perform_backup():
             while True:
                 # Get a chunk of rows from the table
                 response = supabase.table(table).select().range(start, end).execute()
-                                # Check if the chunk has rows
+
+                # Check if the chunk has rows
                 if response['data']:
                     # Append the rows to the list
                     rows.extend(response['data'])
@@ -87,21 +79,10 @@ def perform_backup():
             parent = repo.get_git_commit(master_sha)
             commit = repo.create_git_commit(f"Update {table}.csv", tree, [parent])
             master_ref.edit(commit.sha)
-            print("Backup Now Finished")
         except Exception as e:
-            print(f"Error processing table {table}: {str(e)}")
+            print(f"Error processing table {table}: {e}")
 
-# Define a Celery task that calls the backup function
-@celery_app.task
-def backup_task():
-    perform_backup()
-
-@app.route('/backup', methods=['GET'])
-def backup_route():
-    # Start the backup task
-    backup_task.delay()
-
-    return jsonify({"message": "Backup started"}), 200
+    print("Backup Now Finished")
 
 if __name__ == "__main__":
-    app.run(port=flask_app_port, debug=True)
+    perform_backup()
