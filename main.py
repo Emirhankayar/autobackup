@@ -7,6 +7,7 @@ from datetime import datetime
 import os
 from dotenv import load_dotenv
 import io
+from celery import Celery
 
 load_dotenv()
 
@@ -25,8 +26,11 @@ supabase: Client = create_client(url, key)
 g = Github(github_token)
 repo = g.get_user().get_repo(github_repo)
 
-@app.route('/backup', methods=['GET'])
-def backup():
+# Create a Celery instance
+celery_app = Celery('tasks', broker=os.getenv('CLOUDAMQP_URL'))
+
+def perform_backup():
+    # Your existing backup logic goes here
     # Get the current timestamp
     timestamp = datetime.now().strftime("%Y-%b-%d_%H-%M-%S")
 
@@ -47,8 +51,7 @@ def backup():
             while True:
                 # Get a chunk of rows from the table
                 response = supabase.table(table).select().range(start, end).execute()
-
-                # Check if the chunk has rows
+                                # Check if the chunk has rows
                 if response['data']:
                     # Append the rows to the list
                     rows.extend(response['data'])
@@ -87,8 +90,17 @@ def backup():
         except Exception as e:
             print(f"Error processing table {table}: {str(e)}")
 
-    return jsonify({"message": "Backup completed successfully"}), 200
+# Define a Celery task that calls the backup function
+@celery_app.task
+def backup_task():
+    perform_backup()
 
+@app.route('/backup', methods=['GET'])
+def backup_route():
+    # Start the backup task
+    backup_task.delay()
+
+    return jsonify({"message": "Backup started"}), 200
 
 if __name__ == "__main__":
     app.run(port=flask_app_port, debug=True)
